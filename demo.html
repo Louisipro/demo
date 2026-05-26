@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Cravia — Démo app</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    :root {
+      --orange: #D85A30;
+      --amber: #FAC775;
+      --cream: #FDF6EE;
+      --dark: #2C2C2A;
+      --gray: #888780;
+      --border: #E8D5C0;
+    }
+    body {
+      background: #1C1C1E;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    }
+
+    /* ── Device frame ── */
+    .device {
+      width: 390px;
+      height: 844px;
+      background: var(--cream);
+      border-radius: 50px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 0 0 2px #444, 0 40px 100px rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      height: 44px;
+      background: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    /* ── Screens container ── */
+    .screens {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    .screen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      overflow-y: auto;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .screen.active { opacity: 1; pointer-events: all; }
+    .screen::-webkit-scrollbar { display: none; }
+
+    /* ── Bottom nav ── */
+    .bottom-nav {
+      height: 72px;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding-bottom: 8px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 3px; cursor: pointer; padding: 8px 20px;
+      border-radius: 12px; transition: all 0.15s;
+    }
+    .nav-icon { font-size: 22px; }
+    .nav-label { font-size: 10px; font-weight: 600; color: var(--gray); }
+    .nav-item.active .nav-label { color: var(--orange); }
+
+    /* ─────────────────────────────────────
+       HOME SCREEN
+    ───────────────────────────────────── */
+    .home-header {
+      background: var(--orange);
+      padding: 20px 20px 24px;
+      color: white;
+    }
+    .home-header h2 { font-size: 22px; font-weight: 800; margin-bottom: 2px; }
+    .home-header .date-line { font-size: 13px; opacity: 0.8; margin-bottom: 16px; }
+    .macro-summary {
+      background: rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .macro-item { text-align: center; }
+    .macro-item .val { font-size: 17px; font-weight: 800; }
+    .macro-item .lbl { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+
+    .section-title {
+      font-size: 15px; font-weight: 700; color: var(--dark);
+      padding: 18px 20px 10px;
+    }
+    .meal-card {
+      background: white; border-radius: 18px;
+      margin: 0 16px 10px; padding: 14px 16px;
+      border: 1px solid var(--border);
+      cursor: pointer; display: flex; align-items: center; gap: 12px;
+      transition: transform 0.1s;
+    }
+    .meal-card:active { transform: scale(0.98); }
+    .meal-emoji { font-size: 34px; }
+    .meal-info { flex: 1; }
+    .meal-type { font-size: 10px; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+    .meal-name { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 3px; line-height: 1.3; }
+    .meal-macros { font-size: 12px; color: var(--gray); }
+    .meal-arrow { font-size: 20px; color: var(--border); }
+
+    .envie-btn {
+      background: var(--amber); border-radius: 18px;
+      margin: 6px 16px 24px; padding: 16px 18px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .envie-btn:active { transform: scale(0.98); }
+    .envie-btn-emoji { font-size: 30px; }
+    .envie-btn-text strong { display: block; font-size: 15px; font-weight: 700; color: var(--dark); }
+    .envie-btn-text span { font-size: 12px; color: #705A38; }
+
+    /* ─────────────────────────────────────
+       RECIPE SCREEN
+    ───────────────────────────────────── */
+    .recipe-header {
+      background: var(--orange);
+      padding: 16px 20px 26px;
+      color: white;
+    }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      opacity: 0.9; margin-bottom: 14px;
+    }
+    .recipe-type-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.2); border-radius: 20px;
+      padding: 4px 12px; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 8px;
+    }
+    .recipe-header h2 { font-size: 20px; font-weight: 800; line-height: 1.2; }
+    .macro-chips { display: flex; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
+    .macro-chip {
+      background: rgba(255,255,255,0.2); border-radius: 20px;
+      padding: 5px 11px; font-size: 12px; font-weight: 600;
+    }
+    .recipe-body { padding: 20px; }
+    .recipe-section { margin-bottom: 22px; }
+    .recipe-section h3 {
+      font-size: 11px; font-weight: 700; color: var(--gray);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;
+    }
+    .ingredient-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+      font-size: 14px; color: var(--dark);
+    }
+    .ingredient-item:last-child { border-bottom: none; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+    .step-item { display: flex; gap: 12px; margin-bottom: 14px; }
+    .step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--orange); color: white;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-text { font-size: 14px; color: var(--dark); line-height: 1.6; }
+    .conseil-box {
+      background: #FFF8EE; border: 1px solid var(--amber);
+      border-radius: 14px; padding: 14px 16px;
+      font-size: 13px; color: var(--dark); line-height: 1.6;
+    }
+
+    /* ─────────────────────────────────────
+       ENVIE SCREEN
+    ───────────────────────────────────── */
+    .envie-header {
+      background: var(--orange); padding: 20px 20px 28px; color: white;
+    }
+    .envie-header h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .envie-header p { font-size: 14px; opacity: 0.85; }
+    .envie-form { padding: 20px; }
+    .envie-input-wrap {
+      background: white; border: 2px solid var(--border); border-radius: 16px;
+      padding: 13px 16px; display: flex; align-items: center; gap: 10px;
+      margin-bottom: 12px; transition: border-color 0.2s;
+    }
+    .envie-input-wrap:focus-within { border-color: var(--orange); }
+    .envie-input-wrap input {
+      flex: 1; border: none; outline: none;
+      font-size: 15px; color: var(--dark); background: transparent;
+      font-family: inherit;
+    }
+    .envie-input-wrap input::placeholder { color: #C5BDB5; }
+    .generate-btn {
+      width: 100%; background: var(--orange); color: white;
+      border: none; border-radius: 16px; padding: 16px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      font-family: inherit; transition: opacity 0.2s;
+    }
+    .generate-btn:active { opacity: 0.85; }
+
+    .loading-wrap {
+      text-align: center; padding: 30px 20px; display: none;
+    }
+    .loading-wrap p { font-size: 14px; color: var(--gray); margin-top: 12px; }
+    .dot-pulse { display: inline-flex; gap: 6px; }
+    .dot-pulse span {
+      width: 10px; height: 10px; border-radius: 50%; background: var(--orange);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+    .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse { 0%,80%,100%{opacity:0.3;transform:scale(0.8)} 40%{opacity:1;transform:scale(1)} }
+
+    .envie-result { display: none; margin-top: 18px; }
+    .envie-result-card { background: white; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); }
+    .envie-result-header { background: var(--orange); padding: 16px 18px; color: white; }
+    .envie-tag { font-size: 10px; font-weight: 700; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+    .envie-result-header h3 { font-size: 17px; font-weight: 800; margin-bottom: 10px; }
+    .envie-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .envie-chip { background: rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 600; }
+    .envie-result-body { padding: 16px 18px; }
+    .mini-ingredient {
+      font-size: 13px; color: var(--dark); padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .mini-ingredient:last-child { border-bottom: none; }
+
+    /* ─────────────────────────────────────
+       TRACKER SCREEN
+    ───────────────────────────────────── */
+    .tracker-header {
+      background: var(--orange); padding: 20px 20px 24px; color: white;
+    }
+    .tracker-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .tracker-header .sub { font-size: 13px; opacity: 0.8; margin-bottom: 14px; }
+    .date-nav {
+      display: flex; align-items: center; justify-content: center; gap: 20px;
+    }
+    .date-nav button {
+      background: rgba(255,255,255,0.2); border: none; color: white;
+      width: 32px; height: 32px; border-radius: 50%; font-size: 18px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: inherit;
+    }
+    .date-nav .date-label { font-size: 15px; font-weight: 600; }
+
+    .calorie-ring-wrap {
+      padding: 22px 20px 14px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .ring-text .consumed { font-size: 34px; font-weight: 800; color: var(--dark); line-height: 1; }
+    .ring-text .total-lbl { font-size: 13px; color: var(--gray); margin-top: 2px; }
+    .ring-text .remaining { font-size: 12px; color: var(--orange); font-weight: 600; margin-top: 8px; }
+
+    .macro-bars { padding: 0 20px 16px; }
+    .bar-row { margin-bottom: 12px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--dark); margin-bottom: 5px; font-weight: 500; }
+    .bar-label span:last-child { color: var(--gray); font-weight: 400; }
+    .bar-track { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; }
+
+    .tracker-meals { padding: 0 20px 24px; }
+    .tracker-meal-item {
+      background: white; border-radius: 14px; padding: 12px 14px;
+      border: 1px solid var(--border); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .tm-emoji { font-size: 24px; }
+    .tm-info { flex: 1; }
+    .tm-type { font-size: 10px; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.6px; }
+    .tm-name { font-size: 14px; font-weight: 600; color: var(--dark); margin: 2px 0; }
+    .tm-macros { font-size: 12px; color: var(--gray); }
+
+    .analyze-btn {
+      background: white; border: 2px dashed var(--orange);
+      border-radius: 14px; padding: 14px; width: 100%;
+      text-align: center; font-size: 14px; font-weight: 600;
+      color: var(--orange); cursor: pointer; font-family: inherit;
+    }
+
+    /* ─────────────────────────────────────
+       MODAL
+    ───────────────────────────────────── */
+    .modal-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.45); display: none;
+      align-items: flex-end; z-index: 200;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--cream); border-radius: 24px 24px 0 0;
+      padding: 20px 20px 32px; width: 100%;
+      animation: slideUp 0.28s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 18px; }
+    .modal-sheet h3 { font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--dark); }
+    .modal-input {
+      width: 100%; background: white; border: 2px solid var(--border);
+      border-radius: 14px; padding: 13px 16px; font-size: 15px;
+      font-family: inherit; color: var(--dark); margin-bottom: 12px; outline: none;
+    }
+    .modal-input:focus { border-color: var(--orange); }
+    .modal-result {
+      background: white; border-radius: 14px; padding: 14px 16px;
+      border: 1px solid var(--border); margin-bottom: 12px; display: none;
+    }
+    .modal-food-name { font-size: 15px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+    .food-macro-chips { display: flex; gap: 7px; flex-wrap: wrap; }
+    .food-chip {
+      background: var(--cream); border: 1px solid var(--border);
+      border-radius: 10px; padding: 5px 10px; font-size: 12px;
+      font-weight: 600; color: var(--dark);
+    }
+
+    /* Mobile full screen */
+    @media (max-width: 420px) {
+      body { background: var(--cream); align-items: flex-start; }
+      .device { width: 100%; height: 100vh; border-radius: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="device">
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span id="clock">9:41</span>
+    <span style="letter-spacing:2px">● ● ●</span>
+  </div>
+
+  <!-- Screens -->
+  <div class="screens">
+
+    <!-- ══ ACCUEIL ══ -->
+    <div class="screen active" id="screen-home">
+      <div class="home-header">
+        <h2>Bonjour, Alex 👋</h2>
+        <div class="date-line">Mardi 27 mai · Voici ton plan du jour</div>
+        <div class="macro-summary">
+          <div class="macro-item"><div class="val">1 700</div><div class="lbl">kcal</div></div>
+          <div class="macro-item"><div class="val">133g</div><div class="lbl">Protéines</div></div>
+          <div class="macro-item"><div class="val">152g</div><div class="lbl">Glucides</div></div>
+          <div class="macro-item"><div class="val">49g</div><div class="lbl">Lipides</div></div>
+        </div>
+      </div>
+
+      <div class="section-title">Tes repas du jour</div>
+
+      <div class="meal-card" onclick="openRecipe(0)">
+        <div class="meal-emoji">🥞</div>
+        <div class="meal-info">
+          <div class="meal-type">Petit-déjeuner</div>
+          <div class="meal-name">Pancakes protéinés à la banane</div>
+          <div class="meal-macros">420 kcal · 32g prot · 48g glucides</div>
+        </div>
+        <div class="meal-arrow">›</div>
+      </div>
+
+      <div class="meal-card" onclick="openRecipe(1)">
+        <div class="meal-emoji">🥗</div>
+        <div class="meal-info">
+          <div class="meal-type">Déjeuner</div>
+          <div class="meal-name">Bowl poulet grillé & quinoa</div>
+          <div class="meal-macros">580 kcal · 45g prot · 52g glucides</div>
+        </div>
+        <div class="meal-arrow">›</div>
+      </div>
+
+      <div class="meal-card" onclick="openRecipe(2)">
+        <div class="meal-emoji">🐟</div>
+        <div class="meal-info">
+          <div class="meal-type">Dîner</div>
+          <div class="meal-name">Saumon en papillote, légumes rôtis</div>
+          <div class="meal-macros">490 kcal · 38g prot · 28g glucides</div>
+        </div>
+        <div class="meal-arrow">›</div>
+      </div>
+
+      <div class="meal-card" onclick="openRecipe(3)">
+        <div class="meal-emoji">🫙</div>
+        <div class="meal-info">
+          <div class="meal-type">Snack</div>
+          <div class="meal-name">Yaourt grec, fruits rouges & amandes</div>
+          <div class="meal-macros">210 kcal · 18g prot · 24g glucides</div>
+        </div>
+        <div class="meal-arrow">›</div>
+      </div>
+
+      <div class="section-title">Envie d'autre chose ?</div>
+
+      <div class="envie-btn" onclick="goTo('envie')">
+        <div class="envie-btn-emoji">💬</div>
+        <div class="envie-btn-text">
+          <strong>J'ai envie de…</strong>
+          <span>Dis-le, l'IA crée ta recette sur mesure</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RECETTE ══ -->
+    <div class="screen" id="screen-recette">
+      <div class="recipe-header">
+        <div class="back-btn" onclick="goTo('home')">‹ Retour</div>
+        <div id="r-badge" class="recipe-type-badge">Déjeuner</div>
+        <h2 id="r-name">—</h2>
+        <div class="macro-chips" id="r-chips"></div>
+      </div>
+      <div class="recipe-body" id="r-body"></div>
+    </div>
+
+    <!-- ══ J'AI ENVIE DE ══ -->
+    <div class="screen" id="screen-envie">
+      <div class="envie-header">
+        <h2>J'ai envie de… 💬</h2>
+        <p>Dis-le, l'IA adapte la recette à tes objectifs.</p>
+      </div>
+      <div class="envie-form">
+        <div class="envie-input-wrap">
+          <span>💭</span>
+          <input type="text" id="envie-input" placeholder="Ex: des pâtes au saumon…"
+            onkeydown="if(event.key==='Enter') generateRecipe()" />
+        </div>
+        <button class="generate-btn" onclick="generateRecipe()">Générer ma recette ✨</button>
+
+        <div class="loading-wrap" id="envie-loading">
+          <div class="dot-pulse"><span></span><span></span><span></span></div>
+          <p>L'IA prépare ta recette…</p>
+        </div>
+
+        <div class="envie-result" id="envie-result">
+          <div class="envie-result-card">
+            <div class="envie-result-header">
+              <div class="envie-tag">✨ Recette générée par l'IA</div>
+              <h3 id="e-name"></h3>
+              <div class="envie-chips" id="e-chips"></div>
+            </div>
+            <div class="envie-result-body">
+              <div class="recipe-section">
+                <h3>Ingrédients</h3>
+                <div id="e-ingredients"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TRACKER ══ -->
+    <div class="screen" id="screen-tracker">
+      <div class="tracker-header">
+        <h2>📊 Mon tracker</h2>
+        <div class="sub">Suis tes apports au quotidien</div>
+        <div class="date-nav">
+          <button onclick="changeDate(-1)">‹</button>
+          <span class="date-label" id="tracker-date">Aujourd'hui</span>
+          <button onclick="changeDate(1)">›</button>
+        </div>
+      </div>
+
+      <!-- Ring -->
+      <div class="calorie-ring-wrap">
+        <svg width="110" height="110" viewBox="0 0 110 110">
+          <circle cx="55" cy="55" r="44" fill="none" stroke="#E8D5C0" stroke-width="12"/>
+          <circle cx="55" cy="55" r="44" fill="none" stroke="#D85A30" stroke-width="12"
+            stroke-dasharray="172 276" stroke-dashoffset="69" stroke-linecap="round"
+            transform="rotate(-90 55 55)"/>
+        </svg>
+        <div class="ring-text">
+          <div class="consumed">1 050</div>
+          <div class="total-lbl">sur 1 700 kcal</div>
+          <div class="remaining">↑ 650 kcal restantes</div>
+        </div>
+      </div>
+
+      <!-- Bars -->
+      <div class="macro-bars">
+        <div class="bar-row">
+          <div class="bar-label"><span>🥩 Protéines</span><span>82 / 133g</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:62%;background:#D85A30"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label"><span>🌾 Glucides</span><span>95 / 152g</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:63%;background:#FAC775"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label"><span>🫒 Lipides</span><span>28 / 49g</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:57%;background:#E8A87C"></div></div>
+        </div>
+      </div>
+
+      <!-- Meals logged -->
+      <div class="tracker-meals">
+        <div class="section-title" style="padding:0 0 12px">Repas enregistrés</div>
+
+        <div class="tracker-meal-item">
+          <div class="tm-emoji">🥞</div>
+          <div class="tm-info">
+            <div class="tm-type">Petit-déjeuner</div>
+            <div class="tm-name">Pancakes protéinés à la banane</div>
+            <div class="tm-macros">420 kcal · 32g P · 48g G · 10g L</div>
+          </div>
+        </div>
+
+        <div class="tracker-meal-item">
+          <div class="tm-emoji">🥗</div>
+          <div class="tm-info">
+            <div class="tm-type">Déjeuner</div>
+            <div class="tm-name">Bowl poulet grillé & quinoa</div>
+            <div class="tm-macros">580 kcal · 45g P · 52g G · 14g L</div>
+          </div>
+        </div>
+
+        <div class="tracker-meal-item" id="ai-logged" style="display:none">
+          <div class="tm-emoji">🤖</div>
+          <div class="tm-info">
+            <div class="tm-type" style="color:var(--gray)">Analysé par IA</div>
+            <div class="tm-name" id="ai-logged-name">—</div>
+            <div class="tm-macros" id="ai-logged-macros">—</div>
+          </div>
+        </div>
+
+        <button class="analyze-btn" onclick="openModal()">+ Analyser un aliment avec l'IA</button>
+      </div>
+    </div>
+
+  </div>
+  <!-- /screens -->
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="nav-home" onclick="goTo('home')">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Accueil</div>
+    </div>
+    <div class="nav-item" id="nav-envie" onclick="goTo('envie')">
+      <div class="nav-icon">💬</div>
+      <div class="nav-label">J'ai envie de</div>
+    </div>
+    <div class="nav-item" id="nav-tracker" onclick="goTo('tracker')">
+      <div class="nav-icon">📊</div>
+      <div class="nav-label">Tracker</div>
+    </div>
+  </div>
+
+  <!-- Modal: Analyser aliment -->
+  <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h3>🤖 Analyser un aliment</h3>
+      <input class="modal-input" id="modal-input" type="text"
+        placeholder="Ex: 100g de riz cuit, une pomme…"
+        onkeydown="if(event.key==='Enter') analyzeFood()" />
+      <div class="modal-result" id="modal-result">
+        <div class="modal-food-name" id="modal-food-name"></div>
+        <div class="food-macro-chips" id="modal-food-macros"></div>
+      </div>
+      <button class="generate-btn" id="modal-btn" onclick="analyzeFood()">Analyser</button>
+    </div>
+  </div>
+
+</div>
+<!-- /device -->
+
+<script>
+// ── Meal data ──────────────────────────────────────────────────────────────
+const meals = [
+  {
+    type:'Petit-déjeuner', emoji:'🥞',
+    name:'Pancakes protéinés à la banane',
+    cal:420, prot:32, glucides:48, lipides:10,
+    ingredients:['2 œufs entiers','1 banane mûre','80g de flocons d\'avoine','100ml de lait d\'amande','1 dose de whey vanille (30g)','1 pincée de levure chimique'],
+    steps:[
+      'Écraser la banane à la fourchette jusqu\'à obtenir une purée lisse.',
+      'Mélanger tous les ingrédients dans un bol jusqu\'à obtenir une pâte homogène.',
+      'Faire chauffer une poêle antiadhésive à feu moyen avec un peu d\'huile de coco.',
+      'Verser des petites louches de pâte et cuire 2-3 min de chaque côté.',
+      'Servir chaud avec un filet de miel ou des fruits rouges.'
+    ],
+    conseil:'💡 Tu peux préparer la pâte la veille et la conserver au frigo. Ajoute une pincée de cannelle pour relever le goût !'
+  },
+  {
+    type:'Déjeuner', emoji:'🥗',
+    name:'Bowl poulet grillé & quinoa',
+    cal:580, prot:45, glucides:52, lipides:14,
+    ingredients:['150g de blanc de poulet','80g de quinoa cru','½ avocat','100g de tomates cerises','50g d\'épinards frais','Jus de citron, huile d\'olive, sel, poivre'],
+    steps:[
+      'Cuire le quinoa dans 2 fois son volume d\'eau salée pendant 15 min.',
+      'Assaisonner le poulet avec sel, poivre, paprika et le griller 6-7 min de chaque côté.',
+      'Laisser reposer le poulet 5 min, puis le trancher en lamelles.',
+      'Assembler le bowl : quinoa en base, poulet, avocat en tranches, tomates et épinards.',
+      'Arroser d\'un filet de citron et d\'huile d\'olive. Servir aussitôt.'
+    ],
+    conseil:'💡 Prépare une double portion de quinoa le soir pour gagner du temps le lendemain. Tu peux remplacer le poulet par du thon en conserve.'
+  },
+  {
+    type:'Dîner', emoji:'🐟',
+    name:'Saumon en papillote, légumes rôtis',
+    cal:490, prot:38, glucides:28, lipides:22,
+    ingredients:['150g de filet de saumon','1 courgette','1 poivron rouge','1 carotte','Herbes de Provence, ail, huile d\'olive','Jus de citron, sel, poivre'],
+    steps:[
+      'Préchauffer le four à 200°C.',
+      'Couper les légumes en morceaux et les disposer sur une plaque avec un filet d\'huile et les épices.',
+      'Enfourner les légumes 15 min.',
+      'Placer le saumon sur une feuille d\'alu, arroser de citron, refermer en papillote.',
+      'Ajouter la papillote dans le four et cuire encore 12-15 min. Servir avec les légumes rôtis.'
+    ],
+    conseil:'💡 La papillote garde toute l\'humidité du saumon — ne pas trop cuire pour un résultat fondant. Une pincée de curcuma sur les légumes booste leurs propriétés anti-inflammatoires.'
+  },
+  {
+    type:'Snack', emoji:'🫙',
+    name:'Yaourt grec, fruits rouges & amandes',
+    cal:210, prot:18, glucides:24, lipides:3,
+    ingredients:['200g de yaourt grec nature (0%)','80g de fruits rouges mélangés','15g d\'amandes effilées','1 c.à.c. de miel'],
+    steps:[
+      'Verser le yaourt grec dans un bol.',
+      'Disposer les fruits rouges sur le dessus.',
+      'Parsemer d\'amandes effilées.',
+      'Ajouter un filet de miel et déguster aussitôt.'
+    ],
+    conseil:'💡 Idéal en post-entraînement grâce à sa richesse en protéines. Prépare-le dans un bocal la veille pour l\'emporter facilement.'
+  }
+];
+
+// ── Envie recipes ──────────────────────────────────────────────────────────
+const envieDB = {
+  default: {
+    name:'Bol de riz sauté au poulet et légumes', cal:520, prot:42, glucides:58, lipides:12,
+    ingredients:['150g de blanc de poulet','80g de riz basmati cuit','1 carotte','½ courgette','2 c.s. de sauce soja','Ail, gingembre, huile de sésame']
+  },
+  pates: {
+    name:'Pâtes complètes saumon & crème légère', cal:560, prot:40, glucides:65, lipides:14,
+    ingredients:['100g de pâtes complètes','120g de saumon fumé','100ml de crème légère','½ citron','Aneth, sel, poivre','10g de parmesan']
+  },
+  salade: {
+    name:'Grande salade protéinée façon César', cal:380, prot:35, glucides:22, lipides:16,
+    ingredients:['130g de blanc de poulet grillé','Laitue romaine','Tomates cerises','20g de parmesan râpé','20g de croûtons complets','Sauce César légère']
+  },
+  omelette: {
+    name:'Omelette aux légumes et chèvre frais', cal:340, prot:28, glucides:8, lipides:22,
+    ingredients:['3 œufs entiers','30g de chèvre frais','½ poivron rouge','40g d\'épinards frais','Ciboulette fraîche','Sel, poivre, huile d\'olive']
+  }
+};
+
+// ── Navigation ──────────────────────────────────────────────────────────────
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const screen = document.getElementById('screen-' + id);
+  if (screen) screen.classList.add('active');
+  const nav = document.getElementById('nav-' + id);
+  if (nav) nav.classList.add('active');
+}
+
+function openRecipe(i) {
+  const m = meals[i];
+  document.getElementById('r-badge').textContent = m.type;
+  document.getElementById('r-name').textContent = m.name;
+  document.getElementById('r-chips').innerHTML = `
+    <div class="macro-chip">🔥 ${m.cal} kcal</div>
+    <div class="macro-chip">🥩 ${m.prot}g prot</div>
+    <div class="macro-chip">🌾 ${m.glucides}g glucides</div>
+    <div class="macro-chip">🫒 ${m.lipides}g lipides</div>`;
+
+  const ingr = m.ingredients.map(x => `<div class="ingredient-item"><div class="dot"></div><span>${x}</span></div>`).join('');
+  const steps = m.steps.map((s,j) => `<div class="step-item"><div class="step-num">${j+1}</div><div class="step-text">${s}</div></div>`).join('');
+  document.getElementById('r-body').innerHTML = `
+    <div class="recipe-section"><h3>Ingrédients</h3>${ingr}</div>
+    <div class="recipe-section"><h3>Préparation</h3>${steps}</div>
+    <div class="recipe-section"><h3>Conseil Cravia</h3><div class="conseil-box">${m.conseil}</div></div>`;
+
+  goTo('recette');
+}
+
+// ── J'ai envie de ──────────────────────────────────────────────────────────
+function generateRecipe() {
+  const val = document.getElementById('envie-input').value.toLowerCase();
+  if (!val.trim()) return;
+  document.getElementById('envie-result').style.display = 'none';
+  document.getElementById('envie-loading').style.display = 'block';
+
+  setTimeout(() => {
+    document.getElementById('envie-loading').style.display = 'none';
+    let r = envieDB.default;
+    if (/p[aâ]te|spaghetti|tagliatelle/.test(val)) r = envieDB.pates;
+    else if (/salad/.test(val)) r = envieDB.salade;
+    else if (/omelet|oeuf|œuf/.test(val)) r = envieDB.omelette;
+
+    document.getElementById('e-name').textContent = r.name;
+    document.getElementById('e-chips').innerHTML = `
+      <div class="envie-chip">🔥 ${r.cal} kcal</div>
+      <div class="envie-chip">🥩 ${r.prot}g prot</div>
+      <div class="envie-chip">🌾 ${r.glucides}g glucides</div>`;
+    document.getElementById('e-ingredients').innerHTML = r.ingredients
+      .map(x => `<div class="mini-ingredient"><div class="dot"></div>${x}</div>`).join('');
+    document.getElementById('envie-result').style.display = 'block';
+  }, 2200);
+}
+
+// ── Tracker ────────────────────────────────────────────────────────────────
+const dateLabels = ['Avant-hier', 'Hier', 'Aujourd\'hui'];
+let dayIdx = 2;
+function changeDate(d) {
+  dayIdx = Math.max(0, Math.min(2, dayIdx + d));
+  document.getElementById('tracker-date').textContent = dateLabels[dayIdx];
+}
+
+// ── Modal: Analyser aliment ────────────────────────────────────────────────
+const foodDB = {
+  'riz':     { name:'100g de riz cuit',   cal:130, prot:2.7, glucides:28, lipides:0.3 },
+  'pomme':   { name:'Une pomme (150g)',    cal:78,  prot:0.4, glucides:21, lipides:0.2 },
+  'banane':  { name:'Une banane (120g)',   cal:107, prot:1.3, glucides:27, lipides:0.4 },
+  'yaourt':  { name:'Yaourt grec 200g',   cal:120, prot:17,  glucides:6,  lipides:3   },
+  'oeuf':    { name:'2 œufs entiers',     cal:144, prot:12,  glucides:0.6,lipides:10  },
+  'œuf':     { name:'2 œufs entiers',     cal:144, prot:12,  glucides:0.6,lipides:10  },
+  'poulet':  { name:'130g poulet grillé', cal:198, prot:39,  glucides:0,  lipides:4   },
+  'avocat':  { name:'½ avocat',           cal:120, prot:1.5, glucides:6,  lipides:11  },
+  'amande':  { name:'30g d\'amandes',     cal:174, prot:6,   glucides:6,  lipides:15  },
+};
+
+let modalAnalyzed = null;
+
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-input').value = '';
+  document.getElementById('modal-result').style.display = 'none';
+  document.getElementById('modal-btn').textContent = 'Analyser';
+  document.getElementById('modal-btn').onclick = analyzeFood;
+  modalAnalyzed = null;
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function analyzeFood() {
+  const val = document.getElementById('modal-input').value.toLowerCase();
+  if (!val.trim()) return;
+  const btn = document.getElementById('modal-btn');
+  btn.textContent = 'Analyse en cours…';
+  btn.style.opacity = '0.7';
+
+  setTimeout(() => {
+    btn.style.opacity = '1';
+    let food = null;
+    for (const [k, v] of Object.entries(foodDB)) {
+      if (val.includes(k)) { food = v; break; }
+    }
+    if (!food) food = { name: val.charAt(0).toUpperCase()+val.slice(1), cal:165, prot:11, glucides:18, lipides:5 };
+    modalAnalyzed = food;
+
+    document.getElementById('modal-food-name').textContent = food.name;
+    document.getElementById('modal-food-macros').innerHTML = `
+      <div class="food-chip">🔥 ${food.cal} kcal</div>
+      <div class="food-chip">🥩 ${food.prot}g prot</div>
+      <div class="food-chip">🌾 ${food.glucides}g glucides</div>
+      <div class="food-chip">🫒 ${food.lipides}g lip</div>`;
+    document.getElementById('modal-result').style.display = 'block';
+
+    btn.textContent = '+ Ajouter au tracker';
+    btn.onclick = addToTracker;
+  }, 1800);
+}
+
+function addToTracker() {
+  if (!modalAnalyzed) return;
+  document.getElementById('ai-logged-name').textContent = modalAnalyzed.name;
+  document.getElementById('ai-logged-macros').textContent =
+    `${modalAnalyzed.cal} kcal · ${modalAnalyzed.prot}g P · ${modalAnalyzed.glucides}g G · ${modalAnalyzed.lipides}g L`;
+  document.getElementById('ai-logged').style.display = 'flex';
+  closeModal();
+}
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function tick() {
+  const n = new Date();
+  document.getElementById('clock').textContent = n.getHours() + ':' + String(n.getMinutes()).padStart(2,'0');
+}
+tick(); setInterval(tick, 30000);
+</script>
+</body>
+</html>
